@@ -1,18 +1,23 @@
 import type { Config } from "tailwindcss";
 
-export default {
+const config: Config = {
+  darkMode: "class",
   content: [
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./app/**/*.{js,ts,jsx,tsx}", // Semua file di app/
+    "./components/**/*.{js,ts,jsx,tsx}", // Semua komponen di components/
+    "./pages/**/*.{js,ts,jsx,tsx}", // Jika pakai pages router
   ],
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        primary: "#4E95E5",
+      },
+      fontFamily: {
+        sans: ["GOTO Sans", "ui-sans-serif", "system-ui"],
       },
     },
   },
   plugins: [],
-} satisfies Config;
+};
+
+export default config;

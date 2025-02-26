@@ -2,20 +2,46 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@font-face {
+  font-family: 'GOTO Sans';
+  src: url('/fonts/GOTOSans-Bold.woff2') format('woff2'),
+       url('/fonts/GOTOSans-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* globals.css */
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background: radial-gradient(circle at top, rgba(25, 25, 25, 1) 0%, rgba(0, 0, 0, 1) 100%);
+  color: white;
+  font-family: "Inter", sans-serif;
+  position: relative;
+  overflow-x: hidden;
 }
+
+/* Efek bintik-bintik halus biar tidak monoton */
+body::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("/noise-texture.png");
+  opacity: 0.05;
+  pointer-events: none;
+}
+
+/* Glow Effect di Sisi */
+.glow-effect {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(circle, rgba(33, 150, 243, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+  transform: translate(-50%, -50%);
+  z-index: -1;
+  filter: blur(100px);
+}
+
