@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css"; 
 import Navbar from "./components/Navbar";
+import Background from "./components/Background"; 
 import { AuthProvider } from "../contexts/AuthContext";
 
 export const metadata: Metadata = {
@@ -12,15 +13,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <AuthProvider>
       <html lang="id">
-        <body className="bg-black text-white font-sans relative">
-          {/* Efek Glow Lembut di Background */}
-          <div className="glow-effect"></div>
-          
+        <body>
+          {/* Background dengan efek bintang */}
+          <Background />
+
           {/* Navbar */}
           <Navbar />
 
           {/* Main Content */}
-          <main className="max-w-6xl mx-auto relative z-10">
+          <main className="max-w-6xl mx-auto relative z-10 p-6">
             {children}
           </main>
         </body>

@@ -10,38 +10,27 @@
   font-style: normal;
 }
 
-/* globals.css */
 body {
   background: radial-gradient(circle at top, rgba(25, 25, 25, 1) 0%, rgba(0, 0, 0, 1) 100%);
   color: white;
-  font-family: "Inter", sans-serif;
+  font-family: "GOTO Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 
+               "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", 
+               "Segoe UI Symbol", "Noto Color Emoji";
   position: relative;
   overflow-x: hidden;
+  min-height: 100vh;
 }
 
-/* Efek bintik-bintik halus biar tidak monoton */
-body::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: url("/noise-texture.png");
-  opacity: 0.05;
-  pointer-events: none;
+
+@keyframes twinkle {
+  0% { opacity: 0.2; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 0.2; transform: scale(1); }
 }
 
-/* Glow Effect di Sisi */
-.glow-effect {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  width: 800px;
-  height: 800px;
-  background: radial-gradient(circle, rgba(33, 150, 243, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
-  transform: translate(-50%, -50%);
-  z-index: -1;
-  filter: blur(100px);
+.animate-twinkle {
+  animation: twinkle 3s infinite alternate ease-in-out;
 }
+
+
 

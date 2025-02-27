@@ -14,6 +14,7 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { FaStar } from "react-icons/fa";
+import Image from "next/image";
 
 // Komponen Modal Pop-up
 const Modal = ({ isOpen, onClose, discount }: { isOpen: boolean; onClose: () => void; discount: number | null }) => {
@@ -38,6 +39,8 @@ interface Testimonial {
   text: string;
   rating: number;
   createdAt: Timestamp;
+  photoURL?: string;
+  userId?: string;
 }
 
 const Testimonials = () => {
@@ -110,6 +113,8 @@ const Testimonials = () => {
         text: newComment,
         rating,
         createdAt: Timestamp.now(),
+        photoURL: user.photoURL || "",
+        userId: user.uid
       };
 
       const docRef = await addDoc(collection(db, "testimonials"), newTestimonial);
@@ -178,13 +183,30 @@ const Testimonials = () => {
           {testimonials.length > 0 ? (
             testimonials.map((t) => (
               <blockquote key={t.id} className="border-l-4 border-primary pl-4 italic">
-                <p>“{t.text}”</p>
-                <footer className="mt-2 font-bold">- {t.name}</footer>
-                {/* Tampilan Rating */}
-                <div className="flex mt-2">
-                  {[...Array(5)].map((_, i) => (
-                    <FaStar key={i} className={i < t.rating ? "text-yellow-400" : "text-gray-400"} />
-                  ))}
+                <div className="flex items-center gap-4">
+                  {t.photoURL ? (
+                    <Image
+                      src={t.photoURL}
+                      alt={t.name}
+                      width={40}
+                      height={40}
+                      className="rounded-full"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center">
+                      <span className="text-white">{t.name.charAt(0)}</span>
+                    </div>
+                  )}
+                  <div>
+                    <p>"{t.text}"</p>
+                    <footer className="mt-2 font-bold">- {t.name}</footer>
+                    <div className="flex mt-2">
+                      {[...Array(5)].map((_, i) => (
+                        <FaStar key={i} className={i < t.rating ? "text-yellow-400" : "text-gray-400"} />
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </blockquote>
             ))

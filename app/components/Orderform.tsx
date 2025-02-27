@@ -1,138 +1,131 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "../../contexts/AuthContext";
+import { db } from "../../lib/firebaseConfig";
+import { doc, getDoc } from "firebase/firestore";
+import { OrderData } from "../../lib/types/order";
+import { calculateOrderPrice } from "../../lib/utils/priceCalculator";
+import Step1 from "./OrderSteps/Step1";
+import Step2 from "./OrderSteps/Step2";
+import Step3A from "./OrderSteps/Step3A";
+import Step3B from "./OrderSteps/Step3B";
+import Step3C from "./OrderSteps/Step3C";
+import Step4 from "./OrderSteps/Step4";
+import OrderSummary from "./OrderSteps/OrderSummary";
 
 const OrderForm = () => {
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    service: "",
-    additionalNotes: "",
-    price: 0,
+  const [orderData, setOrderData] = useState<OrderData>({
+    projectType: "",
+    projectName: "",
+    platform: "",
+    applicationType: "",
+    customerName: user?.displayName || "",
+    whatsappNumber: "",
+    paymentMethod: ""
   });
+  const [userDiscount, setUserDiscount] = useState<number>(0);
 
-  const services = [
-    { name: "Website Development", price: 5000000 },
-    { name: "Mobile App Development", price: 7000000 },
-    { name: "UI/UX Design", price: 3000000 },
-    { name: "Backend Development", price: 6000000 },
-  ];
+  useEffect(() => {
+    const fetchUserDiscount = async () => {
+      if (!user) return;
+      
+      try {
+        const discountDoc = await getDoc(doc(db, "discounts", user.uid));
+        if (discountDoc.exists()) {
+          setUserDiscount(discountDoc.data().discountPercentage);
+          setOrderData(prev => ({
+            ...prev,
+            discount: discountDoc.data().discountPercentage
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching discount:", error);
+      }
+    };
 
-  const handleNext = () => setStep(step + 1);
-  const handlePrev = () => setStep(step - 1);
+    fetchUserDiscount();
+  }, [user]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-      price: name === "service" ? services.find((s) => s.name === value)?.price || 0 : prev.price,
-    }));
-  };
+  const nextStep = () => setStep(prev => prev + 1);
+  const prevStep = () => setStep(prev => prev - 1);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    alert("Pesanan berhasil dikirim!");
-    console.log(formData);
+  const updateOrderData = (newData: Partial<OrderData>) => {
+    setOrderData(prev => {
+      const updated = { ...prev, ...newData };
+      const totalPrice = calculateOrderPrice(updated);
+      return { ...updated, totalPrice };
+    });
   };
 
   return (
-    <div className="max-w-lg mx-auto p-6 bg-black border border-primary rounded-lg">
-      <h2 className="text-2xl font-bold text-primary text-center">Form Order</h2>
-
+    <div className="max-w-2xl mx-auto p-6 bg-black border border-primary rounded-lg">
       {step === 1 && (
-        <div className="mt-4">
-          <label className="block">Nama Lengkap</label>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            className="w-full p-2 mt-2 border rounded-lg bg-black text-white border-primary"
-            required
-          />
-
-          <label className="block mt-4">Email</label>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            className="w-full p-2 mt-2 border rounded-lg bg-black text-white border-primary"
-            required
-          />
-
-          <button onClick={handleNext} className="mt-4 w-full p-2 bg-primary text-white rounded-lg">
-            Next
-          </button>
-        </div>
+        <Step1 
+          orderData={orderData} 
+          updateOrderData={updateOrderData} 
+          nextStep={nextStep} 
+        />
       )}
-
       {step === 2 && (
-        <div className="mt-4">
-          <label className="block">Pilih Layanan</label>
-          <select
-            name="service"
-            value={formData.service}
-            onChange={handleChange}
-            className="w-full p-2 mt-2 border rounded-lg bg-black text-white border-primary"
-            required
-          >
-            <option value="">-- Pilih Layanan --</option>
-            {services.map((service) => (
-              <option key={service.name} value={service.name}>
-                {service.name} - Rp{service.price.toLocaleString()}
-              </option>
-            ))}
-          </select>
-
-          <button onClick={handlePrev} className="mt-4 w-1/2 p-2 bg-gray-700 text-white rounded-lg">
-            Back
-          </button>
-          <button onClick={handleNext} className="mt-4 w-1/2 p-2 bg-primary text-white rounded-lg">
-            Next
-          </button>
-        </div>
+        <Step2 
+          orderData={orderData} 
+          updateOrderData={updateOrderData}
+          nextStep={nextStep}
+          prevStep={prevStep}
+        />
       )}
-
       {step === 3 && (
-        <div className="mt-4">
-          <label className="block">Catatan Tambahan</label>
-          <textarea
-            name="additionalNotes"
-            value={formData.additionalNotes}
-            onChange={handleChange}
-            rows={3}
-            className="w-full p-2 mt-2 border rounded-lg bg-black text-white border-primary"
-          ></textarea>
-
-          <p className="mt-4 text-lg font-bold">Total Harga: Rp{formData.price.toLocaleString()}</p>
-
-          <button onClick={handlePrev} className="mt-4 w-1/2 p-2 bg-gray-700 text-white rounded-lg">
-            Back
-          </button>
-          <button onClick={handleNext} className="mt-4 w-1/2 p-2 bg-primary text-white rounded-lg">
-            Next
-          </button>
-        </div>
+        <>
+          {orderData.projectType === "A" && (
+            <Step3A 
+              orderData={orderData}
+              updateOrderData={updateOrderData}
+              nextStep={nextStep}
+              prevStep={prevStep}
+            />
+          )}
+          {(orderData.projectType === "B" || orderData.projectType === "C") && (
+            <Step3B
+              orderData={orderData}
+              updateOrderData={updateOrderData}
+              nextStep={nextStep}
+              prevStep={prevStep}
+            />
+          )}
+          {orderData.projectType === "D" && (
+            <Step3C
+              orderData={orderData}
+              updateOrderData={updateOrderData}
+              nextStep={nextStep}
+              prevStep={prevStep}
+            />
+          )}
+        </>
+      )}
+      {step === 4 && (
+        <Step4
+          orderData={orderData}
+          updateOrderData={updateOrderData}
+          nextStep={nextStep}
+          prevStep={prevStep}
+        />
+      )}
+      {step === 5 && (
+        <OrderSummary
+          orderData={orderData}
+          prevStep={prevStep}
+        />
       )}
 
-      {step === 4 && (
-        <div className="mt-4 text-center">
-          <h3 className="text-xl font-bold text-primary">Konfirmasi Pesanan</h3>
-          <p>Nama: {formData.name}</p>
-          <p>Email: {formData.email}</p>
-          <p>Layanan: {formData.service}</p>
-          <p>Total Harga: Rp{formData.price.toLocaleString()}</p>
-          <p>Catatan: {formData.additionalNotes || "-"}</p>
-
-          <button onClick={handlePrev} className="mt-4 w-1/2 p-2 bg-gray-700 text-white rounded-lg">
-            Back
-          </button>
-          <button onClick={handleSubmit} className="mt-4 w-1/2 p-2 bg-green-500 text-white rounded-lg">
-            Submit Order
-          </button>
+      {/* Tampilkan diskon jika ada */}
+      {userDiscount > 0 && (
+        <div className="mt-4 p-2 bg-green-500 bg-opacity-10 border border-green-500 rounded-lg text-center">
+          <p className="text-green-500">
+            Anda memiliki diskon {userDiscount}% dari testimonial!
+          </p>
         </div>
       )}
     </div>
