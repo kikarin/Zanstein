@@ -1,6 +1,18 @@
 "use client";
 
-const Step2 = ({ orderData, setOrderData, nextStep, prevStep }: any) => {
+import { useState } from "react";
+import { OrderData } from "../../../lib/types/order";
+
+interface Step2Props {
+  orderData: OrderData;
+  updateOrderData: (data: Partial<OrderData>) => void;
+  nextStep: () => void;
+  prevStep: () => void;
+}
+
+const Step2 = ({ orderData, updateOrderData, nextStep, prevStep }: Step2Props) => {
+  const [customAppType, setCustomAppType] = useState(orderData.applicationType === "Custom" ? orderData.customApplicationType || "" : "");
+
   return (
     <div>
       <h2 className="text-2xl font-bold text-primary text-center">Detail Proyek</h2>
@@ -9,7 +21,7 @@ const Step2 = ({ orderData, setOrderData, nextStep, prevStep }: any) => {
         <label className="block text-white">Platform:</label>
         <select
           value={orderData.platform}
-          onChange={(e) => setOrderData({ ...orderData, platform: e.target.value })}
+          onChange={(e) => updateOrderData({ platform: e.target.value as "Web" | "Mobile" | "Multiplatform" })}
           className="w-full p-2 border border-gray-700 rounded-lg bg-black text-white"
         >
           <option value="">Pilih Platform</option>
@@ -22,8 +34,8 @@ const Step2 = ({ orderData, setOrderData, nextStep, prevStep }: any) => {
         <label className="block text-white">Nama Proyek:</label>
         <input
           type="text"
-          value={orderData.appName}
-          onChange={(e) => setOrderData({ ...orderData, appName: e.target.value })}
+          value={orderData.projectName}
+          onChange={(e) => updateOrderData({ projectName: e.target.value })}
           className="w-full p-2 border border-gray-700 rounded-lg bg-black text-white"
           placeholder="Masukkan nama proyek..."
         />
@@ -31,8 +43,15 @@ const Step2 = ({ orderData, setOrderData, nextStep, prevStep }: any) => {
         {/* Jenis Aplikasi */}
         <label className="block text-white">Jenis Aplikasi:</label>
         <select
-          value={orderData.appType}
-          onChange={(e) => setOrderData({ ...orderData, appType: e.target.value })}
+          value={orderData.applicationType}
+          onChange={(e) => {
+            const value = e.target.value;
+            updateOrderData({ applicationType: value });
+
+            if (value !== "Custom") {
+              updateOrderData({ customApplicationType: "" });
+            }
+          }}
           className="w-full p-2 border border-gray-700 rounded-lg bg-black text-white"
         >
           <option value="">Pilih Jenis Aplikasi</option>
@@ -45,12 +64,34 @@ const Step2 = ({ orderData, setOrderData, nextStep, prevStep }: any) => {
           <option value="Rekomendasi">💡 Minta Rekomendasi</option>
         </select>
 
+        {/* Input untuk jenis aplikasi custom */}
+        {orderData.applicationType === "Custom" && (
+          <>
+            <label className="block text-white">Tulis Jenis Aplikasi:</label>
+            <input
+              type="text"
+              value={customAppType}
+              onChange={(e) => {
+                setCustomAppType(e.target.value);
+                updateOrderData({ customApplicationType: e.target.value });
+              }}
+              className="w-full p-2 border border-gray-700 rounded-lg bg-black text-white"
+              placeholder="Masukkan jenis aplikasi yang diinginkan..."
+            />
+          </>
+        )}
+
+        {/* Note untuk rekomendasi */}
+        {orderData.applicationType === "Rekomendasi" && (
+          <p className="text-yellow-400 italic">Nanti konsultasi bareng mimin ganteng ya hehe 😆</p>
+        )}
+
         {/* Link Referensi */}
         <label className="block text-white">Link Referensi (Opsional):</label>
         <input
           type="text"
           value={orderData.referenceLink}
-          onChange={(e) => setOrderData({ ...orderData, referenceLink: e.target.value })}
+          onChange={(e) => updateOrderData({ referenceLink: e.target.value })}
           className="w-full p-2 border border-gray-700 rounded-lg bg-black text-white"
           placeholder="Masukkan link referensi jika ada..."
         />

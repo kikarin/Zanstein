@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { db } from "../../../lib/firebaseConfig";
-import { doc, addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, updateDoc, addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { calculateOrderPrice } from "../../../lib/utils/priceCalculator";
 import { OrderData } from "../../../lib/types/order";
 import { PRICE_LIST } from "../../../lib/utils/priceCalculator";
@@ -18,6 +18,28 @@ const Step4 = ({ orderData, updateOrderData, prevStep }: Step4Props) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
+  const [hasUsedDiscount, setHasUsedDiscount] = useState(false);
+
+  useEffect(() => {
+    const checkDiscountUsage = async () => {
+      if (!user) return;
+      
+      try {
+        const userOrdersRef = collection(db, "orders");
+        const userOrdersSnap = await getDoc(doc(db, "users", user.uid));
+        
+        if (userOrdersSnap.exists() && userOrdersSnap.data().hasUsedDiscount) {
+          setHasUsedDiscount(true);
+          // Reset discount if user has already used it
+          updateOrderData({ discount: 0 });
+        }
+      } catch (error) {
+        console.error("Error checking discount usage:", error);
+      }
+    };
+
+    checkDiscountUsage();
+  }, [user]);
 
   const calculateTotal = () => {
     let total = 0;
@@ -51,6 +73,8 @@ const Step4 = ({ orderData, updateOrderData, prevStep }: Step4Props) => {
     return total;
   };
 
+  
+
   const totalPriceBeforeDiscount = calculateTotal();
   const finalPrice = orderData.discount 
     ? totalPriceBeforeDiscount * (1 - orderData.discount/100) 
@@ -61,18 +85,31 @@ const Step4 = ({ orderData, updateOrderData, prevStep }: Step4Props) => {
     setLoading(true);
 
     try {
+      if (orderData.discount && hasUsedDiscount) {
+        alert("Anda sudah menggunakan diskon sebelumnya.");
+        setLoading(false);
+        return;
+      }
+
+      // Prepare complete order data
       const orderDataToSave = {
+        // Customer Info
         customerName: orderData.customerName || 'Guest',
         whatsappNumber: orderData.whatsappNumber || '',
         paymentMethod: orderData.paymentMethod || '',
+        userId: user?.uid || 'guest',
         
+        // Project Details
         projectType: orderData.projectType || '',
         projectName: orderData.projectName || '',
         platform: orderData.platform || '',
         applicationType: orderData.applicationType || '',
+        referenceLink: orderData.referenceLink || '',
 
+        // Development Details
         developmentMethod: orderData.developmentMethod || 'fullstack',
         
+        // Fullstack Choice
         ...(orderData.developmentMethod === 'fullstack' && {
           fullstackChoice: {
             framework: orderData.fullstackChoice?.framework || '',
@@ -80,6 +117,7 @@ const Step4 = ({ orderData, updateOrderData, prevStep }: Step4Props) => {
           }
         }),
         
+        // Mix & Match Choice
         ...(orderData.developmentMethod === 'mixmatch' && {
           mixmatchChoice: {
             frontend: orderData.mixmatchChoice?.frontend || '',
@@ -89,37 +127,38 @@ const Step4 = ({ orderData, updateOrderData, prevStep }: Step4Props) => {
           }
         }),
 
+        // UI/UX Details
         roles: orderData.roles || [],
         uiFramework: orderData.uiFramework || [],
-        
-        themeChoice: orderData.themeChoice ? {
-          mode: orderData.themeChoice.mode || 'light',
-          style: orderData.themeChoice.style || ''
-        } : {
-          mode: 'light',
-          style: ''
-        },
-        
+        themeChoice: orderData.themeChoice || { mode: 'light', style: '' },
         notificationType: orderData.notificationType || 'default',
-        
-        customColors: orderData.customColors ? {
-          count: orderData.customColors.count || 0,
-          colors: orderData.customColors.colors || []
-        } : {
-          count: 0,
-          colors: []
-        },
+        customColors: orderData.customColors || { count: 0, colors: [] },
 
-        totalPrice: finalPrice,
+        // Pricing
+        totalPrice: calculateTotal(),
         originalPrice: totalPriceBeforeDiscount,
+        finalPrice: finalPrice,
         discount: orderData.discount || 0,
-        status: "Menunggu Konfirmasi",
         
-        userId: user?.uid || 'guest',
+        // Status & Metadata
+        status: "Pending",
         createdAt: serverTimestamp(),
+        lastUpdated: serverTimestamp(),
+        
+        // Additional Info
+        notes: orderData.notes || '',
+        deadline: orderData.deadline || 'standard'
       };
 
       await addDoc(collection(db, "orders"), orderDataToSave);
+
+      // Mark discount as used if user used it
+      if (user && orderData.discount) {
+        await updateDoc(doc(db, "users", user.uid), {
+          hasUsedDiscount: true
+        });
+      }
+
       setShowPopup(true);
     } catch (error) {
       console.error("Error saving order:", error);
@@ -132,11 +171,11 @@ const Step4 = ({ orderData, updateOrderData, prevStep }: Step4Props) => {
   const generateWhatsAppMessage = () => {
     const message = `
 📌 *ZanStein Solution - Order Baru*
-👤 Nama: ${orderData.customerName || 'Guest'}
-📱 WhatsApp: ${orderData.whatsappNumber}
-🛠️ Jenis Proyek: ${getProjectTypeName(orderData.projectType)}
-💻 Platform: ${orderData.platform || '-'}
-📌 Aplikasi: ${orderData.projectName || '-'}
+ Nama: ${orderData.customerName || 'Guest'}
+ WhatsApp: ${orderData.whatsappNumber}
+ Jenis Proyek: ${getProjectTypeName(orderData.projectType)}
+ Platform: ${orderData.platform || '-'}
+ Aplikasi: ${orderData.projectName || '-'}
 
 🔧 *Detail Teknologi:*
 ${orderData.developmentMethod === 'fullstack' ? `
@@ -149,16 +188,15 @@ ${orderData.developmentMethod === 'fullstack' ? `
 *Database:* ${orderData.mixmatchChoice?.database || '-'}
 `}
 
-👥 *Role:* ${orderData.roles?.join(', ') || '-'}
-🎨 *UI Framework:* ${orderData.uiFramework?.join(', ') || '-'}
-🌗 *Tema:* ${orderData.themeChoice?.mode || '-'} (${orderData.themeChoice?.style || '-'})
-🔔 *Notifikasi:* ${orderData.notificationType || '-'}
+ *Role:* ${orderData.roles?.join(', ') || '-'}
+ *UI Framework:* ${orderData.uiFramework?.join(', ') || '-'}
+ *Tema:* ${orderData.themeChoice?.mode || '-'} (${orderData.themeChoice?.style || '-'})
+ *Notifikasi:* ${orderData.notificationType || '-'}
 
-💰 *Total Harga:* Rp ${finalPrice.toLocaleString()}
+ *Total Harga:* Rp ${finalPrice.toLocaleString()}
 ${orderData.discount ? `🎁 *Diskon:* ${orderData.discount}%` : ''}
-💳 *Pembayaran via:* ${orderData.paymentMethod || 'Belum dipilih'}
+ *Pembayaran via:* ${orderData.paymentMethod || 'Belum dipilih'}
 
-✅ *Status:* Menunggu Konfirmasi
     `;
 
     return message;

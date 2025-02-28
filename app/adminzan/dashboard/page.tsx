@@ -3,7 +3,15 @@
 import { useState, useEffect } from "react";
 import { auth, db } from "../../../lib/firebaseConfig";
 import { signOut } from "firebase/auth";
-import { doc, getDoc, collection, getDocs, updateDoc } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  collection,
+  getDocs,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
 export default function AdminDashboard() {
@@ -56,14 +64,33 @@ export default function AdminDashboard() {
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
       const orderRef = doc(db, "orders", orderId);
-      await updateDoc(orderRef, { orderStatus: newStatus });
+      await updateDoc(orderRef, {
+        status: newStatus,
+        lastUpdated: serverTimestamp(),
+      });
+
+      // Update local state
       setOrders((prevOrders) =>
         prevOrders.map((order) =>
-          order.id === orderId ? { ...order, orderStatus: newStatus } : order
+          order.id === orderId ? { ...order, status: newStatus } : order
         )
       );
     } catch (error) {
-      console.error("Gagal mengupdate status:", error);
+      console.error("Error updating status:", error);
+      alert("Gagal mengupdate status order");
+    }
+  };
+
+  // 🔹 Delete Order
+  const handleDeleteOrder = async (orderId: string) => {
+    if (!window.confirm("Anda yakin ingin menghapus order ini?")) return;
+
+    try {
+      await deleteDoc(doc(db, "orders", orderId));
+      setOrders(orders.filter((order) => order.id !== orderId));
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      alert("Gagal menghapus order");
     }
   };
 
@@ -71,15 +98,21 @@ export default function AdminDashboard() {
   const filteredOrders =
     filterStatus === "Semua"
       ? orders
-      : orders.filter((order) => order.orderStatus === filterStatus);
+      : orders.filter((order) => order.status === filterStatus);
 
-  if (!isAdmin) return <p className="text-center text-red-500">Akses Ditolak!</p>;
+  if (!isAdmin)
+    return <p className="text-center text-red-500">Akses Ditolak!</p>;
 
   return (
     <div className="max-w-5xl mx-auto p-6 bg-black border border-primary rounded-lg">
-      <h2 className="text-2xl font-bold text-primary text-center">📊 Dashboard Admin</h2>
+      <h2 className="text-2xl font-bold text-primary text-center">
+        📊 Dashboard Admin
+      </h2>
 
-      <button onClick={handleLogout} className="mt-4 p-2 bg-red-500 text-white rounded-lg">
+      <button
+        onClick={handleLogout}
+        className="mt-4 p-2 bg-red-500 text-white rounded-lg"
+      >
         Logout
       </button>
 
@@ -102,31 +135,161 @@ export default function AdminDashboard() {
       {loading ? (
         <p className="text-gray-400">Memuat data...</p>
       ) : filteredOrders.length === 0 ? (
-        <p className="text-gray-400">Tidak ada order dengan status {filterStatus}.</p>
+        <p className="text-gray-400">
+          Tidak ada order dengan status {filterStatus}.
+        </p>
       ) : (
         <ul className="mt-4 space-y-4">
           {filteredOrders.map((order) => (
-            <li key={order.id} className="p-4 border border-gray-600 rounded-lg">
-              <p className="text-white font-bold">👤 {order.customerName}</p>
-              <p className="text-gray-400">📱 {order.phoneNumber}</p>
-              <p className="text-gray-400">🛠️ {order.projectType}</p>
-              <p className="text-gray-400">💰 {order.paymentMethod}</p>
-              <p className="text-gray-400">💻 {order.platform}</p>
-              <p className="text-gray-400">🔗 {order.referenceLink || "Tidak ada"}</p>
-              <p className="text-gray-400">📅 {new Date(order.orderDate?.seconds * 1000).toLocaleDateString()}</p>
+            <li
+              key={order.id}
+              className="p-4 border border-gray-600 rounded-lg"
+            >
+              {/* Customer Info */}
+              <div className="mb-4">
+                <h4 className="text-lg font-bold text-primary">
+                  Informasi Pelanggan
+                </h4>
+                <p className="text-white">👤 Nama: {order.customerName}</p>
+                <p className="text-gray-400">
+                  📱 WhatsApp: {order.whatsappNumber}
+                </p>
+                <p className="text-gray-400">
+                  💳 Pembayaran: {order.paymentMethod}
+                </p>
+              </div>
 
-              {/* 🔹 Status Order */}
-              <div className="mt-3">
-                <p className="text-green-400">✅ Status: {order.orderStatus}</p>
-                <select
-                  className="w-full p-2 mt-2 border rounded-lg bg-black text-white border-gray-500"
-                  value={order.orderStatus}
-                  onChange={(e) => updateOrderStatus(order.id, e.target.value)}
-                >
-                  <option value="Pending">Pending</option>
-                  <option value="Diproses">Diproses</option>
-                  <option value="Selesai">Selesai</option>
-                </select>
+              {/* Project Details */}
+              <div className="mb-4">
+                <h4 className="text-lg font-bold text-primary">
+                  Detail Proyek
+                </h4>
+                <p className="text-gray-400">📌 Tipe: {order.projectType}</p>
+                <p className="text-gray-400">📝 Nama: {order.projectName}</p>
+                <p className="text-gray-400">💻 Platform: {order.platform}</p>
+                <p className="text-gray-400">
+                  🔧 Jenis: {order.applicationType}
+                </p>
+                <p className="text-gray-400">
+                  🔗 Referensi: {order.referenceLink || "Tidak ada"}
+                </p>
+              </div>
+
+              {/* Development Details */}
+              <div className="mb-4">
+                <h4 className="text-lg font-bold text-primary">
+                  Detail Pengembangan
+                </h4>
+                <p className="text-gray-400">
+                  ⚙️ Metode: {order.developmentMethod}
+                </p>
+
+                {order.developmentMethod === "fullstack" &&
+                  order.fullstackChoice && (
+                    <>
+                      <p className="text-gray-400">
+                        🛠️ Framework: {order.fullstackChoice.framework}
+                      </p>
+                      <p className="text-gray-400">
+                        📦 Database: {order.fullstackChoice.database}
+                      </p>
+                    </>
+                  )}
+
+                {order.developmentMethod === "mixmatch" &&
+                  order.mixmatchChoice && (
+                    <>
+                      <p className="text-gray-400">
+                        🎨 Frontend: {order.mixmatchChoice.frontend}
+                      </p>
+                      <p className="text-gray-400">
+                        ⚙️ Backend: {order.mixmatchChoice.backend}
+                      </p>
+                      <p className="text-gray-400">
+                        🔌 API: {order.mixmatchChoice.api}
+                      </p>
+                      <p className="text-gray-400">
+                        📦 Database: {order.mixmatchChoice.database}
+                      </p>
+                    </>
+                  )}
+              </div>
+
+              {/* UI/UX Details */}
+              <div className="mb-4">
+                <h4 className="text-lg font-bold text-primary">Detail UI/UX</h4>
+                <p className="text-gray-400">
+                  👥 Roles: {order.roles?.join(", ") || "Tidak ada"}
+                </p>
+                <p className="text-gray-400">
+                  🎨 UI Framework: {order.uiFramework?.join(", ") || "Default"}
+                </p>
+                <p className="text-gray-400">
+                  🎭 Theme: {order.themeChoice?.mode || "Default"}
+                </p>
+                <p className="text-gray-400">
+                  🔔 Notifikasi: {order.notificationType || "Default"}
+                </p>
+                {order.customColors?.colors?.length > 0 && (
+                  <p className="text-gray-400">
+                    🎨 Custom Colors: {order.customColors.colors.join(", ")}
+                  </p>
+                )}
+              </div>
+
+              {/* Pricing */}
+              <div className="mb-4">
+                <h4 className="text-lg font-bold text-primary">Harga</h4>
+                <p className="text-gray-400">
+                  💰 Harga Asli: Rp {order.originalPrice?.toLocaleString()}
+                </p>
+                {order.discount > 0 && (
+                  <p className="text-green-500">🎉 Diskon: {order.discount}%</p>
+                )}
+                <p className="text-white font-bold">
+                  💵 Total: Rp {order.finalPrice?.toLocaleString()}
+                </p>
+              </div>
+
+              {/* Additional Info */}
+              <div className="mb-4">
+                <h4 className="text-lg font-bold text-primary">
+                  Info Tambahan
+                </h4>
+                <p className="text-gray-400">⏰ Deadline: {order.deadline}</p>
+                <p className="text-gray-400">
+                  📝 Catatan: {order.notes || "Tidak ada"}
+                </p>
+                <p className="text-gray-400">
+                  📅 Dibuat:{" "}
+                  {new Date(order.createdAt?.seconds * 1000).toLocaleString()}
+                </p>
+              </div>
+
+              {/* Status & Actions */}
+              <div className="mt-4 space-y-2">
+                <h4 className="text-lg font-bold text-primary">
+                  Status & Tindakan
+                </h4>
+                <div className="flex items-center space-x-4">
+                  <select
+                    className="flex-1 p-2 border rounded-lg bg-black text-white border-gray-500"
+                    value={order.status}
+                    onChange={(e) =>
+                      updateOrderStatus(order.id, e.target.value)
+                    }
+                  >
+                    <option value="Diproses">Diproses</option>
+                    <option value="Selesai">Selesai</option>
+                    <option value="Pending">Pending</option>
+                  </select>
+                  <button
+                    onClick={() => handleDeleteOrder(order.id)}
+                    className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                  >
+                    Hapus
+                  </button>
+                </div>
               </div>
             </li>
           ))}

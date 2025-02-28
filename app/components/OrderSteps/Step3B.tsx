@@ -12,30 +12,56 @@ interface Step3BProps {
   prevStep: () => void;
 }
 
-const Step3B = ({ orderData, updateOrderData, nextStep, prevStep }: Step3BProps) => {
-  const [developmentMethod, setDevelopmentMethod] = useState<"fullstack" | "mixmatch">("fullstack");
+const Step3B = ({
+  orderData,
+  updateOrderData,
+  nextStep,
+  prevStep,
+}: Step3BProps) => {
+  const [developmentMethod, setDevelopmentMethod] = useState<
+    "fullstack" | "mixmatch"
+  >("fullstack");
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [currentColor, setCurrentColor] = useState("#ffffff");
 
-  const handleFullstackChange = (type: 'framework' | 'database', value: string) => {
+  const handleFullstackChange = (
+    type: "framework" | "database",
+    value: string
+  ) => {
     updateOrderData({
-      developmentMethod: 'fullstack',
+      developmentMethod: "fullstack",
       fullstackChoice: {
-        framework: type === 'framework' ? value : (orderData.fullstackChoice?.framework || ''),
-        database: type === 'database' ? value : (orderData.fullstackChoice?.database || '')
-      }
+        framework:
+          type === "framework"
+            ? value
+            : orderData.fullstackChoice?.framework || "",
+        database:
+          type === "database"
+            ? value
+            : orderData.fullstackChoice?.database || "",
+      },
     });
   };
 
-  const handleMixMatchChange = (type: 'frontend' | 'backend' | 'api' | 'database', value: string) => {
+  const handleMixMatchChange = (
+    type: "frontend" | "backend" | "api" | "database",
+    value: string
+  ) => {
     updateOrderData({
-      developmentMethod: 'mixmatch',
+      developmentMethod: "mixmatch",
       mixmatchChoice: {
-        frontend: type === 'frontend' ? value : (orderData.mixmatchChoice?.frontend || ''),
-        backend: type === 'backend' ? value : (orderData.mixmatchChoice?.backend || ''),
-        api: type === 'api' ? value : (orderData.mixmatchChoice?.api || ''),
-        database: type === 'database' ? value : (orderData.mixmatchChoice?.database || '')
-      }
+        frontend:
+          type === "frontend"
+            ? value
+            : orderData.mixmatchChoice?.frontend || "",
+        backend:
+          type === "backend" ? value : orderData.mixmatchChoice?.backend || "",
+        api: type === "api" ? value : orderData.mixmatchChoice?.api || "",
+        database:
+          type === "database"
+            ? value
+            : orderData.mixmatchChoice?.database || "",
+      },
     });
   };
 
@@ -46,8 +72,8 @@ const Step3B = ({ orderData, updateOrderData, nextStep, prevStep }: Step3BProps)
       updateOrderData({
         customColors: {
           count: orderData.customColors?.count || 1,
-          colors: [...currentColors, color.hex]
-        }
+          colors: [...currentColors, color.hex],
+        },
       });
     }
   };
@@ -57,13 +83,15 @@ const Step3B = ({ orderData, updateOrderData, nextStep, prevStep }: Step3BProps)
     let total = 0;
 
     // Hitung role
-    orderData.roles?.forEach(role => {
+    orderData.roles?.forEach((role) => {
       total += PRICE_LIST.roles[role] || 0;
     });
 
     // Hitung stack teknologi
     if (developmentMethod === "fullstack" && orderData.fullstackChoice) {
-      total += PRICE_LIST.fullstackFrameworks[orderData.fullstackChoice.framework] || 0;
+      total +=
+        PRICE_LIST.fullstackFrameworks[orderData.fullstackChoice.framework] ||
+        0;
       total += PRICE_LIST.databases[orderData.fullstackChoice.database] || 0;
     } else if (orderData.mixmatchChoice) {
       total += PRICE_LIST.frontends[orderData.mixmatchChoice.frontend] || 0;
@@ -73,7 +101,7 @@ const Step3B = ({ orderData, updateOrderData, nextStep, prevStep }: Step3BProps)
     }
 
     // Hitung UI Framework
-    orderData.uiFramework?.forEach(framework => {
+    orderData.uiFramework?.forEach((framework) => {
       total += PRICE_LIST.uiFrameworks[framework] || 0;
     });
 
@@ -90,15 +118,50 @@ const Step3B = ({ orderData, updateOrderData, nextStep, prevStep }: Step3BProps)
     return total;
   };
 
+  const [customRole, setCustomRole] = useState("");
+  const [editingRole, setEditingRole] = useState<string | null>(null);
+  
   const handleRoleChange = (role: string, checked: boolean) => {
     const currentRoles = orderData.roles || [];
-    const newRoles = checked 
-      ? [...currentRoles, role]
-      : currentRoles.filter(r => r !== role);
-    
+    const newRoles = checked
+      ? [...currentRoles, role] // Tambah jika dicentang
+      : currentRoles.filter((r) => r !== role); // Hapus jika tidak dicentang
+  
     updateOrderData({ roles: newRoles });
   };
-
+  
+  const handleCustomRoleChange = () => {
+    if (customRole.trim() === "") return;
+  
+    const currentRoles = orderData.roles || [];
+  
+    // Jika sedang mengedit, update role yang diedit
+    if (editingRole) {
+      const updatedRoles = currentRoles.map((role) =>
+        role === editingRole ? customRole : role
+      );
+      updateOrderData({ roles: updatedRoles });
+      setEditingRole(null);
+    } else {
+      // Tambahkan role baru jika belum ada
+      if (!currentRoles.includes(customRole)) {
+        updateOrderData({ roles: [...currentRoles, customRole] });
+      }
+    }
+  
+    setCustomRole(""); // Reset input setelah ditambahkan atau diedit
+  };
+  
+  const handleEditRole = (role: string) => {
+    setCustomRole(role);
+    setEditingRole(role);
+  };
+  
+  const handleDeleteRole = (role: string) => {
+    const updatedRoles = orderData.roles?.filter((r) => r !== role) || [];
+    updateOrderData({ roles: updatedRoles });
+  };
+  
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-primary text-center">
@@ -110,7 +173,10 @@ const Step3B = ({ orderData, updateOrderData, nextStep, prevStep }: Step3BProps)
         <h3 className="text-lg font-medium text-white">1️⃣ Role dalam Sistem</h3>
         <div className="grid grid-cols-2 gap-3">
           {Object.entries(PRICE_LIST.roles).map(([role, price]) => (
-            <label key={role} className="flex items-center space-x-2 p-3 border border-gray-600 rounded-lg">
+            <label
+              key={role}
+              className="flex items-center space-x-2 p-3 border border-gray-600 rounded-lg"
+            >
               <input
                 type="checkbox"
                 checked={orderData.roles?.includes(role)}
@@ -123,11 +189,60 @@ const Step3B = ({ orderData, updateOrderData, nextStep, prevStep }: Step3BProps)
             </label>
           ))}
         </div>
+
+        {/* Input Custom Role */}
+        <div className="flex space-x-2 mt-4">
+          <input
+            type="text"
+            value={customRole}
+            onChange={(e) => setCustomRole(e.target.value)}
+            placeholder="Masukkan role kustom"
+            className="p-2 border border-gray-600 rounded-lg bg-gray-800 text-white"
+          />
+          <button
+            onClick={handleCustomRoleChange}
+            className={`px-4 py-2 rounded-lg ${
+              editingRole ? "bg-yellow-500" : "bg-blue-500"
+            } text-white`}
+          >
+            {editingRole ? "Update" : "Tambah"}
+          </button>
+        </div>
+
+        {/* Daftar Role Kustom */}
+        <div className="mt-4 space-y-2">
+          {orderData.roles?.map((role) =>
+            !Object.keys(PRICE_LIST.roles).includes(role) ? (
+              <div
+                key={role}
+                className="flex justify-between items-center p-2 border border-gray-500 rounded-md bg-gray-700 text-white"
+              >
+                <span>{role} - (Harga bisa di sesuaikan nanti)</span>
+                <div className="space-x-2">
+                  <button
+                    onClick={() => handleEditRole(role)}
+                    className="px-2 py-1 text-sm bg-yellow-500 text-white rounded"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteRole(role)}
+                    className="px-2 py-1 text-sm bg-red-500 text-white rounded"
+                  >
+                    Hapus
+                  </button>
+                </div>
+              </div>
+            ) : null
+          )}
+        </div>
       </div>
 
       {/* 2. Development Method */}
       <div className="space-y-3">
-        <h3 className="text-lg font-medium text-white">2️⃣ Metode Pengembangan</h3>
+        <h3 className="text-lg font-medium text-white">
+          2️⃣ Metode Pengembangan
+        </h3>
         <div className="space-y-2">
           <label className="flex items-center space-x-2 p-3 border border-gray-600 rounded-lg">
             <input
@@ -145,7 +260,9 @@ const Step3B = ({ orderData, updateOrderData, nextStep, prevStep }: Step3BProps)
               onChange={() => setDevelopmentMethod("mixmatch")}
               className="form-radio"
             />
-            <span className="text-white">Frontend, Backend, & Database Terpisah (Mix & Match)</span>
+            <span className="text-white">
+              Frontend, Backend, & Database Terpisah (Mix & Match)
+            </span>
           </label>
         </div>
       </div>
@@ -159,14 +276,18 @@ const Step3B = ({ orderData, updateOrderData, nextStep, prevStep }: Step3BProps)
             <select
               className="w-full p-2 bg-black border border-gray-600 rounded-lg text-white"
               value={orderData.fullstackChoice?.framework || ""}
-              onChange={(e) => handleFullstackChange('framework', e.target.value)}
+              onChange={(e) =>
+                handleFullstackChange("framework", e.target.value)
+              }
             >
               <option value="">Pilih Framework</option>
-              {Object.entries(PRICE_LIST.fullstackFrameworks).map(([framework, price]) => (
-                <option key={framework} value={framework}>
-                  {framework} - Rp {price.toLocaleString()}
-                </option>
-              ))}
+              {Object.entries(PRICE_LIST.fullstackFrameworks).map(
+                ([framework, price]) => (
+                  <option key={framework} value={framework}>
+                    {framework} - Rp {price.toLocaleString()}
+                  </option>
+                )
+              )}
             </select>
           </div>
 
@@ -176,7 +297,9 @@ const Step3B = ({ orderData, updateOrderData, nextStep, prevStep }: Step3BProps)
             <select
               className="w-full p-2 bg-black border border-gray-600 rounded-lg text-white"
               value={orderData.fullstackChoice?.database || ""}
-              onChange={(e) => handleFullstackChange('database', e.target.value)}
+              onChange={(e) =>
+                handleFullstackChange("database", e.target.value)
+              }
             >
               <option value="">Pilih Database</option>
               {Object.entries(PRICE_LIST.databases).map(([db, price]) => (
@@ -196,7 +319,7 @@ const Step3B = ({ orderData, updateOrderData, nextStep, prevStep }: Step3BProps)
             <select
               className="w-full p-2 bg-black border border-gray-600 rounded-lg text-white"
               value={orderData.mixmatchChoice?.frontend || ""}
-              onChange={(e) => handleMixMatchChange('frontend', e.target.value)}
+              onChange={(e) => handleMixMatchChange("frontend", e.target.value)}
             >
               <option value="">Pilih Frontend</option>
               {Object.entries(PRICE_LIST.frontends).map(([tech, price]) => (
@@ -213,7 +336,7 @@ const Step3B = ({ orderData, updateOrderData, nextStep, prevStep }: Step3BProps)
             <select
               className="w-full p-2 bg-black border border-gray-600 rounded-lg text-white"
               value={orderData.mixmatchChoice?.backend || ""}
-              onChange={(e) => handleMixMatchChange('backend', e.target.value)}
+              onChange={(e) => handleMixMatchChange("backend", e.target.value)}
             >
               <option value="">Pilih Backend</option>
               {Object.entries(PRICE_LIST.backends).map(([tech, price]) => (
@@ -227,10 +350,10 @@ const Step3B = ({ orderData, updateOrderData, nextStep, prevStep }: Step3BProps)
           {/* API Selection */}
           <div className="space-y-3">
             <h3 className="text-lg font-medium text-white">API</h3>
-      <select
+            <select
               className="w-full p-2 bg-black border border-gray-600 rounded-lg text-white"
               value={orderData.mixmatchChoice?.api || ""}
-              onChange={(e) => handleMixMatchChange('api', e.target.value)}
+              onChange={(e) => handleMixMatchChange("api", e.target.value)}
             >
               <option value="">Pilih API</option>
               {Object.entries(PRICE_LIST.apis).map(([tech, price]) => (
@@ -238,24 +361,24 @@ const Step3B = ({ orderData, updateOrderData, nextStep, prevStep }: Step3BProps)
                   {tech} - Rp {price.toLocaleString()}
                 </option>
               ))}
-      </select>
+            </select>
           </div>
 
           {/* Database Selection */}
           <div className="space-y-3">
             <h3 className="text-lg font-medium text-white">Database</h3>
-      <select
+            <select
               className="w-full p-2 bg-black border border-gray-600 rounded-lg text-white"
               value={orderData.mixmatchChoice?.database || ""}
-              onChange={(e) => handleMixMatchChange('database', e.target.value)}
-      >
-        <option value="">Pilih Database</option>
+              onChange={(e) => handleMixMatchChange("database", e.target.value)}
+            >
+              <option value="">Pilih Database</option>
               {Object.entries(PRICE_LIST.databases).map(([tech, price]) => (
                 <option key={tech} value={tech}>
                   {tech} - Rp {price.toLocaleString()}
                 </option>
               ))}
-      </select>
+            </select>
           </div>
         </div>
       )}
@@ -263,60 +386,73 @@ const Step3B = ({ orderData, updateOrderData, nextStep, prevStep }: Step3BProps)
       {/* 3. UI Framework Selection */}
       <div className="space-y-3">
         <h3 className="text-lg font-medium text-white">3️⃣ UI Framework</h3>
-        
+
         {/* Conditional UI Framework berdasarkan platform */}
-        {orderData.fullstackChoice?.framework?.includes('flutter') || 
-         orderData.mixmatchChoice?.frontend?.includes('flutter') ? (
+        {orderData.fullstackChoice?.framework?.includes("flutter") ||
+        orderData.mixmatchChoice?.frontend?.includes("flutter") ? (
           <div className="space-y-2">
             <label className="flex items-center space-x-2 p-3 border border-gray-600 rounded-lg">
               <input
                 type="radio"
                 name="flutterUI"
                 value="default"
-                checked={orderData.uiFramework?.includes('flutter-default')}
-                onChange={(e) => updateOrderData({ 
-                  uiFramework: ['flutter-default']
-                })}
+                checked={orderData.uiFramework?.includes("flutter-default")}
+                onChange={(e) =>
+                  updateOrderData({
+                    uiFramework: ["flutter-default"],
+                  })
+                }
                 className="form-radio"
               />
-              <span className="text-white">Default Flutter UI (Material/Cupertino) - Gratis</span>
+              <span className="text-white">
+                Default Flutter UI (Material/Cupertino) - Gratis
+              </span>
             </label>
             <label className="flex items-center space-x-2 p-3 border border-gray-600 rounded-lg">
               <input
                 type="radio"
                 name="flutterUI"
                 value="custom"
-                checked={orderData.uiFramework?.includes('flutter-custom')}
-                onChange={(e) => updateOrderData({ 
-                  uiFramework: ['flutter-custom']
-                })}
+                checked={orderData.uiFramework?.includes("flutter-custom")}
+                onChange={(e) =>
+                  updateOrderData({
+                    uiFramework: ["flutter-custom"],
+                  })
+                }
                 className="form-radio"
               />
-              <span className="text-white">Custom UI (GetWidget, FlutterFlow) - Rp 60.000</span>
+              <span className="text-white">
+                Custom UI (GetWidget, FlutterFlow) - Rp 60.000
+              </span>
             </label>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
-            {Object.entries(PRICE_LIST.uiFrameworks).map(([framework, price]) => (
-              <label key={framework} className="flex items-center space-x-2 p-3 border border-gray-600 rounded-lg">
-                <input
-                  type="checkbox"
-                  checked={orderData.uiFramework?.includes(framework)}
-                  onChange={(e) => {
-                    const current = orderData.uiFramework || [];
-                    updateOrderData({
-                      uiFramework: e.target.checked 
-                        ? [...current, framework]
-                        : current.filter(f => f !== framework)
-                    });
-                  }}
-                  className="form-checkbox"
-                />
-                <span className="text-white">
-                  {framework} - Rp {price.toLocaleString()}
-                </span>
-              </label>
-            ))}
+            {Object.entries(PRICE_LIST.uiFrameworks).map(
+              ([framework, price]) => (
+                <label
+                  key={framework}
+                  className="flex items-center space-x-2 p-3 border border-gray-600 rounded-lg"
+                >
+                  <input
+                    type="checkbox"
+                    checked={orderData.uiFramework?.includes(framework)}
+                    onChange={(e) => {
+                      const current = orderData.uiFramework || [];
+                      updateOrderData({
+                        uiFramework: e.target.checked
+                          ? [...current, framework]
+                          : current.filter((f) => f !== framework),
+                      });
+                    }}
+                    className="form-checkbox"
+                  />
+                  <span className="text-white">
+                    {framework} - Rp {price.toLocaleString()}
+                  </span>
+                </label>
+              )
+            )}
           </div>
         )}
       </div>
@@ -324,31 +460,35 @@ const Step3B = ({ orderData, updateOrderData, nextStep, prevStep }: Step3BProps)
       {/* 4. Theme Selection */}
       <div className="space-y-3">
         <h3 className="text-lg font-medium text-white">4️⃣ Tema UI</h3>
-      <select
+        <select
           className="w-full p-2 bg-black border border-gray-600 rounded-lg text-white"
           value={orderData.themeChoice?.mode || ""}
-          onChange={(e) => updateOrderData({
-            themeChoice: {
-              ...orderData.themeChoice,
-              mode: e.target.value as "light" | "dark" | "auto" | "custom"
-            }
-          })}
+          onChange={(e) =>
+            updateOrderData({
+              themeChoice: {
+                ...orderData.themeChoice,
+                mode: e.target.value as "light" | "dark" | "auto" | "custom",
+              },
+            })
+          }
         >
           <option value="">Pilih Mode Tema</option>
           <option value="light">Light Mode</option>
           <option value="dark">Dark Mode</option>
           <option value="auto">Auto (Switch Dark/Light) - +Rp 20.000</option>
-      </select>
+        </select>
 
-      <select
+        <select
           className="w-full p-2 bg-black border border-gray-600 rounded-lg text-white"
           value={orderData.themeChoice?.style || ""}
-          onChange={(e) => updateOrderData({
-            themeChoice: {
-              ...orderData.themeChoice,
-              style: e.target.value
-            }
-          })}
+          onChange={(e) =>
+            updateOrderData({
+              themeChoice: {
+                ...orderData.themeChoice,
+                style: e.target.value,
+              },
+            })
+          }
         >
           <option value="">Pilih Style Tema</option>
           <option value="fresh">Fresh</option>
@@ -357,53 +497,67 @@ const Step3B = ({ orderData, updateOrderData, nextStep, prevStep }: Step3BProps)
           <option value="modern">Modern</option>
           <option value="cyberpunk">Cyberpunk</option>
           <option value="minimalist">Minimalist</option>
-      </select>
+        </select>
       </div>
 
       {/* 5. Notification Type */}
       <div className="space-y-3">
         <h3 className="text-lg font-medium text-white">5️⃣ Tipe Notifikasi</h3>
-        
-        {orderData.fullstackChoice?.framework?.includes('flutter') || 
-         orderData.mixmatchChoice?.frontend?.includes('flutter') ? (
+
+        {orderData.fullstackChoice?.framework?.includes("flutter") ||
+        orderData.mixmatchChoice?.frontend?.includes("flutter") ? (
           <div className="space-y-2">
             <label className="flex items-center space-x-2 p-3 border border-gray-600 rounded-lg">
               <input
                 type="radio"
                 name="notification"
                 value="flutter-default"
-                checked={orderData.notificationType === 'flutter-default'}
-                onChange={(e) => updateOrderData({ notificationType: e.target.value })}
+                checked={orderData.notificationType === "flutter-default"}
+                onChange={(e) =>
+                  updateOrderData({ notificationType: e.target.value })
+                }
                 className="form-radio"
               />
-              <span className="text-white">Default Flutter AlertDialog - Gratis</span>
+              <span className="text-white">
+                Default Flutter AlertDialog - Gratis
+              </span>
             </label>
             <label className="flex items-center space-x-2 p-3 border border-gray-600 rounded-lg">
               <input
                 type="radio"
                 name="notification"
                 value="flutter-custom"
-                checked={orderData.notificationType === 'flutter-custom'}
-                onChange={(e) => updateOrderData({ notificationType: e.target.value })}
+                checked={orderData.notificationType === "flutter-custom"}
+                onChange={(e) =>
+                  updateOrderData({ notificationType: e.target.value })
+                }
                 className="form-radio"
               />
-              <span className="text-white">Custom Snackbar/Toast - Rp 20.000</span>
+              <span className="text-white">
+                Custom Snackbar/Toast - Rp 20.000
+              </span>
             </label>
           </div>
         ) : (
           <div className="space-y-2">
             {Object.entries(PRICE_LIST.notifications).map(([type, price]) => (
-              <label key={type} className="flex items-center space-x-2 p-3 border border-gray-600 rounded-lg">
+              <label
+                key={type}
+                className="flex items-center space-x-2 p-3 border border-gray-600 rounded-lg"
+              >
                 <input
                   type="radio"
                   name="notification"
                   value={type}
                   checked={orderData.notificationType === type}
-                  onChange={(e) => updateOrderData({ notificationType: e.target.value })}
+                  onChange={(e) =>
+                    updateOrderData({ notificationType: e.target.value })
+                  }
                   className="form-radio"
                 />
                 <span className="text-white">
-                  {type} {price > 0 ? `- Rp ${price.toLocaleString()}` : '- Gratis'}
+                  {type}{" "}
+                  {price > 0 ? `- Rp ${price.toLocaleString()}` : "- Gratis"}
                 </span>
               </label>
             ))}
@@ -420,22 +574,21 @@ const Step3B = ({ orderData, updateOrderData, nextStep, prevStep }: Step3BProps)
             min="1"
             max="5"
             value={orderData.customColors?.count || 1}
-            onChange={(e) => updateOrderData({
-              customColors: {
-                count: parseInt(e.target.value),
-                colors: orderData.customColors?.colors || []
-              }
-            })}
+            onChange={(e) =>
+              updateOrderData({
+                customColors: {
+                  count: parseInt(e.target.value),
+                  colors: orderData.customColors?.colors || [],
+                },
+              })
+            }
             className="w-full p-2 bg-black border border-gray-600 rounded-lg text-white"
             placeholder="Jumlah warna utama (1-5)"
           />
 
           {showColorPicker && (
             <div className="relative z-50 bg-gray-800 p-4 rounded-lg">
-              <ChromePicker
-                color={currentColor}
-                onChange={handleColorChange}
-              />
+              <ChromePicker color={currentColor} onChange={handleColorChange} />
               <div className="mt-4 flex justify-between">
                 <button
                   onClick={() => setShowColorPicker(false)}
@@ -446,12 +599,15 @@ const Step3B = ({ orderData, updateOrderData, nextStep, prevStep }: Step3BProps)
                 <button
                   onClick={() => {
                     const currentColors = orderData.customColors?.colors || [];
-                    if (currentColors.length < (orderData.customColors?.count || 1)) {
+                    if (
+                      currentColors.length <
+                      (orderData.customColors?.count || 1)
+                    ) {
                       updateOrderData({
                         customColors: {
                           count: orderData.customColors?.count || 1,
-                          colors: [...currentColors, currentColor]
-                        }
+                          colors: [...currentColors, currentColor],
+                        },
                       });
                     }
                     setShowColorPicker(false);
@@ -474,13 +630,15 @@ const Step3B = ({ orderData, updateOrderData, nextStep, prevStep }: Step3BProps)
                 />
                 <button
                   onClick={() => {
-                    const newColors = [...(orderData.customColors?.colors || [])];
+                    const newColors = [
+                      ...(orderData.customColors?.colors || []),
+                    ];
                     newColors.splice(index, 1);
                     updateOrderData({
                       customColors: {
                         count: orderData.customColors?.count || 1,
-                        colors: newColors
-                      }
+                        colors: newColors,
+                      },
                     });
                   }}
                   className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100"
@@ -489,7 +647,8 @@ const Step3B = ({ orderData, updateOrderData, nextStep, prevStep }: Step3BProps)
                 </button>
               </div>
             ))}
-            {(orderData.customColors?.colors.length || 0) < (orderData.customColors?.count || 1) && (
+            {(orderData.customColors?.colors.length || 0) <
+              (orderData.customColors?.count || 1) && (
               <button
                 onClick={() => setShowColorPicker(true)}
                 className="w-8 h-8 rounded-full border border-gray-600 flex items-center justify-center text-white"
@@ -501,19 +660,93 @@ const Step3B = ({ orderData, updateOrderData, nextStep, prevStep }: Step3BProps)
         </div>
       </div>
 
+      {/* Deadline Section */}
+      <div className="mt-6">
+        <h3 className="text-lg font-semibold text-white mb-3">
+          ⏰ Pilih Deadline
+        </h3>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => updateOrderData({ deadline: "standard" })}
+            className={`p-3 rounded-lg border ${
+              orderData.deadline === "standard"
+                ? "bg-primary text-white border-primary"
+                : "bg-gray-800 text-white border-gray-600 hover:border-primary"
+            }`}
+          >
+            30 Hari (Standard)
+            <span className="block text-sm text-gray-400">Free</span>
+          </button>
+          <button
+            onClick={() => updateOrderData({ deadline: "14days" })}
+            className={`p-3 rounded-lg border ${
+              orderData.deadline === "14days"
+                ? "bg-primary text-white border-primary"
+                : "bg-gray-800 text-white border-gray-600 hover:border-primary"
+            }`}
+          >
+            14 Hari
+            <span className="block text-sm text-gray-400">+Rp 30.000</span>
+          </button>
+          <button
+            onClick={() => updateOrderData({ deadline: "7days" })}
+            className={`p-3 rounded-lg border ${
+              orderData.deadline === "7days"
+                ? "bg-primary text-white border-primary"
+                : "bg-gray-800 text-white border-gray-600 hover:border-primary"
+            }`}
+          >
+            7 Hari
+            <span className="block text-sm text-gray-400">+Rp 55.000</span>
+          </button>
+          <button
+            onClick={() => updateOrderData({ deadline: "3days" })}
+            className={`p-3 rounded-lg border ${
+              orderData.deadline === "3days"
+                ? "bg-primary text-white border-primary"
+                : "bg-gray-800 text-white border-gray-600 hover:border-primary"
+            }`}
+          >
+            3 Hari
+            <span className="block text-sm text-gray-400">+Rp 85.000</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Notes Section */}
+      <div className="mt-6">
+        <h3 className="text-lg font-semibold text-white mb-3">
+          📝 Catatan Tambahan
+        </h3>
+        <textarea
+          value={orderData.notes || ""}
+          onChange={(e) => updateOrderData({ notes: e.target.value })}
+          placeholder="Tuliskan catatan atau permintaan khusus untuk project Anda..."
+          className="w-full p-3 bg-black border border-gray-600 rounded-lg text-white min-h-[100px]"
+        />
+      </div>
+
       {/* Total Price Display */}
       <div className="mt-6 p-4 bg-primary bg-opacity-10 border border-primary rounded-lg">
-        <h3 className="text-lg font-medium text-white text-center">Total Harga</h3>
+        <h3 className="text-lg font-medium text-white text-center">
+          Total Harga
+        </h3>
         {orderData.discount ? (
           <>
             <p className="text-lg text-gray-400 line-through text-center">
               Rp {calculateTotal().toLocaleString()}
             </p>
             <p className="text-2xl font-bold text-primary text-center">
-              Rp {(calculateTotal() * (1 - orderData.discount/100)).toLocaleString()}
+              Rp{" "}
+              {(
+                calculateTotal() *
+                (1 - orderData.discount / 100)
+              ).toLocaleString()}
             </p>
             <p className="text-sm text-green-500 text-center">
-              Hemat {orderData.discount}% (Rp {(calculateTotal() * orderData.discount/100).toLocaleString()})
+              Hemat {orderData.discount}% (Rp{" "}
+              {((calculateTotal() * orderData.discount) / 100).toLocaleString()}
+              )
             </p>
           </>
         ) : (

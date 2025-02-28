@@ -2,16 +2,34 @@
 
 import { useRouter } from "next/navigation";
 import { db } from "../../../lib/firebaseConfig";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc } from "firebase/firestore";
 
 const OrderSummary = ({ orderData, prevStep }: any) => {
   const router = useRouter();
 
+  // 🔹 Cek apakah voucher sudah digunakan
+  const checkVoucherUsage = async (voucherCode: string) => {
+    if (!voucherCode) return false;
+    try {
+      const voucherRef = doc(db, "vouchers", voucherCode);
+      const voucherSnap = await getDoc(voucherRef);
+      return voucherSnap.exists() && voucherSnap.data().used;
+    } catch (error) {
+      console.error("Gagal memeriksa voucher:", error);
+      return false;
+    }
+  };
+
   // 🔹 Simpan Order ke Firestore
   const saveOrderToFirestore = async () => {
+    if (await checkVoucherUsage(orderData.voucherCode)) {
+      alert("Voucher sudah digunakan dan tidak bisa digunakan lagi!");
+      return;
+    }
+
     try {
       const docRef = await addDoc(collection(db, "orders"), {
-        orderId: `ORD-${Date.now()}`, // ID unik berdasarkan timestamp
+        orderId: `ORD-${Date.now()}`,
         customerName: orderData.customerName,
         phoneNumber: orderData.phoneNumber,
         projectType: orderData.projectType,
@@ -30,10 +48,16 @@ const OrderSummary = ({ orderData, prevStep }: any) => {
         deadline: orderData.deadline,
         totalPrice: orderData.totalPrice,
         discount: orderData.discount || 0,
+        voucherCode: orderData.voucherCode || null,
         paymentMethod: orderData.paymentMethod,
-        orderDate: serverTimestamp(), // Simpan waktu order dibuat
-        orderStatus: "Pending", // Default status order
+        orderDate: serverTimestamp(),
+        orderStatus: "Pending",
       });
+
+      if (orderData.voucherCode) {
+        const voucherRef = doc(db, "vouchers", orderData.voucherCode);
+        await updateDoc(voucherRef, { used: true });
+      }
 
       console.log("Order berhasil disimpan:", docRef.id);
       alert("Pesanan berhasil disimpan!");

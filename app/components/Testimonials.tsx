@@ -10,6 +10,8 @@ import {
   setDoc,
   getDoc,
   Timestamp,
+  updateDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 import { useAuth } from "../../contexts/AuthContext";
 import { useRouter } from "next/navigation";
@@ -41,6 +43,10 @@ interface Testimonial {
   createdAt: Timestamp;
   photoURL?: string;
   userId?: string;
+  adminReply?: {
+    text: string;
+    timestamp: Timestamp;
+  };
 }
 
 const Testimonials = () => {
@@ -52,6 +58,9 @@ const Testimonials = () => {
   const [rating, setRating] = useState<number>(5); // Default 5 bintang
   const [discount, setDiscount] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false); // Untuk pop-up modal
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [selectedTestimonial, setSelectedTestimonial] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchTestimonials = async () => {
@@ -82,8 +91,18 @@ const Testimonials = () => {
       }
     };
 
+    const checkAdminRole = async () => {
+      if (user) {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        setIsAdmin(userDoc.exists() && userDoc.data().role === "admin");
+      }
+    };
+
     fetchTestimonials();
-    if (user) checkUserDiscount();
+    if (user) {
+      checkUserDiscount();
+      checkAdminRole();
+    }
   }, [user]);
 
   const getRandomDiscount = (): number => {
@@ -136,6 +155,28 @@ const Testimonials = () => {
     }
   };
 
+  // Handle reply submission
+  const handleReply = async (testimonialId: string) => {
+    if (!replyText.trim()) return;
+
+    try {
+      const testimonialRef = doc(db, "testimonials", testimonialId);
+      await updateDoc(testimonialRef, {
+        adminReply: {
+          text: replyText,
+          timestamp: serverTimestamp()
+        }
+      });
+
+      setReplyText("");
+      setSelectedTestimonial(null);
+      // Refresh testimonials
+      fetchTestimonials();
+    } catch (error) {
+      console.error("Error adding reply:", error);
+    }
+  };
+
   return (
     <section className="py-12">
       <h2 className="text-3xl font-bold text-primary text-center">Testimoni Klien</h2>
@@ -182,7 +223,7 @@ const Testimonials = () => {
         <div className="mt-6 space-y-6 max-w-3xl mx-auto">
           {testimonials.length > 0 ? (
             testimonials.map((t) => (
-              <blockquote key={t.id} className="border-l-4 border-primary pl-4 italic">
+              <blockquote key={t.id} className="p-4 border border-gray-700 rounded-lg">
                 <div className="flex items-center gap-4">
                   {t.photoURL ? (
                     <Image
@@ -208,6 +249,54 @@ const Testimonials = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Admin Reply Section */}
+                {t.adminReply && (
+                  <div className="mt-4 pl-4 border-l-2 border-primary">
+                    <p className="text-primary font-bold">Mimin Ganteng Reply:</p>
+                    <p className="text-gray-400">{t.adminReply.text}</p>
+                  </div>
+                )}
+
+                {/* Reply Button & Form (Only for Admin) */}
+                {isAdmin && (
+                  <div className="mt-4">
+                    {selectedTestimonial === t.id ? (
+                      <div className="space-y-2">
+                        <textarea
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                          className="w-full p-2 bg-black border border-gray-600 rounded-lg text-white"
+                          placeholder="Write your reply..."
+                        />
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleReply(t.id)}
+                            className="px-4 py-2 bg-primary text-white rounded-lg"
+                          >
+                            Send Reply
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedTestimonial(null);
+                              setReplyText("");
+                            }}
+                            className="px-4 py-2 bg-gray-600 text-white rounded-lg"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setSelectedTestimonial(t.id)}
+                        className="text-primary hover:underline"
+                      >
+                        Reply to this testimonial
+                      </button>
+                    )}
+                  </div>
+                )}
               </blockquote>
             ))
           ) : (

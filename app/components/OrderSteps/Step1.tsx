@@ -18,7 +18,7 @@ const Step1 = ({ orderData, updateOrderData, nextStep }: Step1Props) => {
     <div>
       <h2 className="text-2xl font-bold text-primary text-center">Pilih Jenis Proyek</h2>
       <div className="mt-4 space-y-3">
-        <button 
+        {/* <button 
           onClick={() => handleSelect("A")} 
           className={`w-full p-3 rounded-lg border transition-colors ${
             orderData.projectType === "A"
@@ -27,7 +27,7 @@ const Step1 = ({ orderData, updateOrderData, nextStep }: Step1Props) => {
           }`}
         >
           📚 Tugas Sekolah Harian
-        </button>
+        </button> */}
         <button 
           onClick={() => handleSelect("B")} 
           className={`w-full p-3 rounded-lg border transition-colors ${
@@ -48,7 +48,7 @@ const Step1 = ({ orderData, updateOrderData, nextStep }: Step1Props) => {
         >
           🏢 Sidang PKL
         </button>
-        <button 
+        {/* <button 
           onClick={() => handleSelect("D")} 
           className={`w-full p-3 rounded-lg border transition-colors ${
             orderData.projectType === "D"
@@ -57,7 +57,7 @@ const Step1 = ({ orderData, updateOrderData, nextStep }: Step1Props) => {
           }`}
         >
           🚀 Pengembangan Web / Aplikasi Profesional
-        </button>
+        </button> */}
       </div>
     </div>
   );

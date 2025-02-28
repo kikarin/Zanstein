@@ -9,7 +9,6 @@ export const PRICE_LIST: PriceList = {
     editor: 10000,
     moderator: 10000,
     operator: 9000,
-    custom: 20000
   },
   fullstackFrameworks: {
     laravel: 120000,
