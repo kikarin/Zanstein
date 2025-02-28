@@ -3,8 +3,15 @@
 import { useRouter } from "next/navigation";
 import { db } from "../../../lib/firebaseConfig";
 import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc } from "firebase/firestore";
+import { OrderData } from "../../../lib/types/order";
 
-const OrderSummary = ({ orderData, prevStep }: any) => {
+interface OrderSummaryProps {
+  orderData: OrderData;
+  isPreview?: boolean;
+  prevStep?: () => void;
+}
+
+const OrderSummary = ({ orderData, isPreview, prevStep }: OrderSummaryProps) => {
   const router = useRouter();
 
   // 🔹 Cek apakah voucher sudah digunakan
@@ -68,40 +75,68 @@ const OrderSummary = ({ orderData, prevStep }: any) => {
     }
   };
 
+  // Format array atau object untuk ditampilkan
+  const formatArray = (arr: any[] | undefined) => {
+    if (!arr || arr.length === 0) return "Tidak ada";
+    return arr.join(", ");
+  };
+
+  const formatCustomColors = (colors: any) => {
+    if (!colors) return "Default";
+    if (Array.isArray(colors)) return colors.join(", ");
+    if (colors.colors && Array.isArray(colors.colors)) return colors.colors.join(", ");
+    return "Default";
+  };
+
   return (
     <div>
       <h2 className="text-2xl font-bold text-primary text-center">📝 Ringkasan Order</h2>
 
       <div className="mt-4 p-4 border border-gray-700 rounded-lg text-white">
         <p><strong>📌 Jenis Proyek:</strong> {orderData.projectType}</p>
-        <p><strong>💻 Platform:</strong> {orderData.platform}</p>
-        <p><strong>📌 Nama Aplikasi:</strong> {orderData.appName}</p>
+        <p><strong>💻 Platform:</strong> {orderData.platform || "Belum dipilih"}</p>
+        <p><strong>📌 Nama Aplikasi:</strong> {orderData.projectName || "Belum diisi"}</p>
         <p><strong>🔗 Link Referensi:</strong> {orderData.referenceLink || "Tidak ada"}</p>
-        <p><strong>⚙️ Stack Teknologi:</strong> {orderData.stackChoice}</p>
-        <p><strong>🛠️ Frontend:</strong> {orderData.frontend || "Tidak ada"}</p>
-        <p><strong>🖥️ Backend:</strong> {orderData.backend || "Tidak ada"}</p>
-        <p><strong>📂 Database:</strong> {orderData.database || "Tidak ada"}</p>
-        <p><strong>🧑‍💻 Role Sistem:</strong> {orderData.roles.join(", ") || "Tidak ada"}</p>
-        <p><strong>🎨 UI Framework:</strong> {orderData.uiFramework || "Default"}</p>
-        <p><strong>🎭 Tema UI:</strong> {orderData.theme}</p>
-        <p><strong>🔔 Notifikasi:</strong> {orderData.notificationType}</p>
-        <p><strong>🎨 Warna Custom:</strong> {orderData.customColors.join(", ") || "Default"}</p>
-        <p><strong>⏳ Deadline:</strong> {orderData.deadline}</p>
-        <p><strong>💰 Total Harga:</strong> Rp{orderData.totalPrice.toLocaleString()}</p>
-        <p><strong>🎁 Diskon:</strong> {orderData.discount}%</p>
-        <p><strong>💳 Metode Pembayaran:</strong> {orderData.paymentMethod}</p>
-        <p><strong>📅 Tanggal Order:</strong> Akan Disimpan Otomatis</p>
-        <p><strong>✅ Status Order:</strong> Pending</p>
+        <p><strong>⚙️ Stack Teknologi:</strong> {orderData.developmentMethod || "Belum dipilih"}</p>
+        
+        {/* Tampilkan berdasarkan development method */}
+        {orderData.developmentMethod === 'fullstack' ? (
+          <>
+            <p><strong>🛠️ Framework:</strong> {orderData.fullstackChoice?.framework || "Belum dipilih"}</p>
+            <p><strong>📂 Database:</strong> {orderData.fullstackChoice?.database || "Belum dipilih"}</p>
+          </>
+        ) : (
+          <>
+            <p><strong>🛠️ Frontend:</strong> {orderData.mixmatchChoice?.frontend || "Belum dipilih"}</p>
+            <p><strong>🖥️ Backend:</strong> {orderData.mixmatchChoice?.backend || "Belum dipilih"}</p>
+            <p><strong>🔌 API:</strong> {orderData.mixmatchChoice?.api || "Belum dipilih"}</p>
+            <p><strong>📂 Database:</strong> {orderData.mixmatchChoice?.database || "Belum dipilih"}</p>
+          </>
+        )}
+
+        <p><strong>🧑‍💻 Role Sistem:</strong> {formatArray(orderData.roles)}</p>
+        <p><strong>🎨 UI Framework:</strong> {formatArray(orderData.uiFramework)}</p>
+        <p><strong>🎭 Tema UI:</strong> {orderData.themeChoice?.mode || "Default"}</p>
+        <p><strong>🔔 Notifikasi:</strong> {orderData.notificationType || "Default"}</p>
+        <p><strong>🎨 Warna Custom:</strong> {formatCustomColors(orderData.customColors)}</p>
+        <p><strong>⏳ Deadline:</strong> {orderData.deadline || "Standard (30 hari)"}</p>
+        <p><strong>💰 Total Harga:</strong> Rp {orderData.totalPrice?.toLocaleString() || "0"}</p>
+        <p><strong>🎁 Diskon:</strong> {orderData.discount || 0}%</p>
+        <p><strong>💳 Metode Pembayaran:</strong> {orderData.paymentMethod || "Belum dipilih"}</p>
+        <p><strong>📝 Catatan:</strong> {orderData.notes || "Tidak ada"}</p>
       </div>
 
-      <div className="flex justify-between mt-6">
-        <button onClick={prevStep} className="p-2 bg-gray-700 text-white rounded-lg">
-          Kembali
-        </button>
-        <button onClick={saveOrderToFirestore} className="p-2 bg-green-500 text-white rounded-lg">
-          Konfirmasi & Simpan Pesanan
-        </button>
-      </div>
+      {/* Tombol hanya ditampilkan jika bukan preview */}
+      {!isPreview && prevStep && (
+        <div className="flex justify-between mt-6">
+          <button onClick={prevStep} className="p-2 bg-gray-700 text-white rounded-lg">
+            Kembali
+          </button>
+          <button onClick={saveOrderToFirestore} className="p-2 bg-green-500 text-white rounded-lg">
+            Konfirmasi & Simpan Pesanan
+          </button>
+        </div>
+      )}
     </div>
   );
 };

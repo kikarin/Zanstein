@@ -1,22 +1,19 @@
 export interface OrderData {
-  // Step 1
-  projectType: "A" | "B" | "C" | "D" | "";
-  
-  // Step 2
+  // User Info
+  userId?: string;
+  customerName: string;
+  whatsappNumber: string;
+  paymentMethod: string;
+
+  // Project Info
+  projectType: string;
+  platform: string;
   projectName: string;
-  platform: "Web" | "Mobile" | "Multiplatform" | "";
   applicationType: string;
   referenceLink?: string;
 
-  // Step 3 (Tugas Harian)
-  simpleStack?: {
-    framework: "noframework" | "withframework" | "recommendation";
-    technologies: string[];
-  };
-
-  // Step 3 (Ujikom & PKL)
-  roles?: string[];
-  developmentMethod?: "fullstack" | "mixmatch";
+  // Development Info
+  developmentMethod?: 'fullstack' | 'mixmatch';
   fullstackChoice?: {
     framework: string;
     database: string;
@@ -27,30 +24,29 @@ export interface OrderData {
     api: string;
     database: string;
   };
+  roles?: string[];
   uiFramework?: string[];
   themeChoice?: {
-    mode: "light" | "dark" | "auto" | "custom";
-    style?: string;
+    mode: string;
   };
   notificationType?: string;
   customColors?: {
-    count: number;
     colors: string[];
   };
-  deadline?: string;
 
-  // Step 4
-  customerName: string;
-  whatsappNumber: string;
-  paymentMethod: "DANA" | "OVO" | "GOPAY" | "";
-  
-  // Calculations
-  basePrice?: number;
-  additionalCosts?: {
-    [key: string]: number;
-  };
+  // Additional Info
+  deadline?: string;
+  notes?: string;
+
+  // Price Info
+  originalPrice?: number;
+  finalPrice?: number;
   discount?: number;
-  totalPrice?: number;
+
+  // Metadata
+  status?: string;
+  createdAt?: any;
+  lastUpdated?: any;
 }
 
 export interface PriceList {
@@ -81,4 +77,4 @@ export interface PriceList {
   deadlines: {
     [key: string]: number;
   };
-} 
+} ``

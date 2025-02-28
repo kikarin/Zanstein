@@ -26,7 +26,7 @@ export default function LoginPage() {
           router.push("/");
         }
       } else {
-        router.push("/newuser"); // Jika user baru, arahkan ke halaman pengisian profil
+        router.push("/profile"); // Jika user baru, arahkan ke halaman pengisian profil
       }
     } catch (error) {
       console.error("Gagal mengecek role:", error);

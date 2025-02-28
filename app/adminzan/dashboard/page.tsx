@@ -128,6 +128,7 @@ export default function AdminDashboard() {
           <option value="Pending">Pending</option>
           <option value="Diproses">Diproses</option>
           <option value="Selesai">Selesai</option>
+          <option value="Dibatalkan">Dibatalkan</option>
         </select>
       </div>
 
@@ -150,12 +151,12 @@ export default function AdminDashboard() {
                 <h4 className="text-lg font-bold text-primary">
                   Informasi Pelanggan
                 </h4>
-                <p className="text-white">👤 Nama: {order.customerName}</p>
+                <p className="text-white">👤 Nama: {order.customerName || "N/A"}</p>
                 <p className="text-gray-400">
-                  📱 WhatsApp: {order.whatsappNumber}
+                  📱 WhatsApp: {order.whatsappNumber || "N/A"}
                 </p>
                 <p className="text-gray-400">
-                  💳 Pembayaran: {order.paymentMethod}
+                  💳 Pembayaran: {order.paymentMethod || "N/A"}
                 </p>
               </div>
 
@@ -164,11 +165,11 @@ export default function AdminDashboard() {
                 <h4 className="text-lg font-bold text-primary">
                   Detail Proyek
                 </h4>
-                <p className="text-gray-400">📌 Tipe: {order.projectType}</p>
-                <p className="text-gray-400">📝 Nama: {order.projectName}</p>
-                <p className="text-gray-400">💻 Platform: {order.platform}</p>
+                <p className="text-gray-400">📌 Tipe: {order.projectType || "N/A"}</p>
+                <p className="text-gray-400">📝 Nama: {order.projectName || "N/A"}</p>
+                <p className="text-gray-400">💻 Platform: {order.platform || "N/A"}</p>
                 <p className="text-gray-400">
-                  🔧 Jenis: {order.applicationType}
+                  🔧 Jenis: {order.applicationType || "N/A"}
                 </p>
                 <p className="text-gray-400">
                   🔗 Referensi: {order.referenceLink || "Tidak ada"}
@@ -241,13 +242,13 @@ export default function AdminDashboard() {
               <div className="mb-4">
                 <h4 className="text-lg font-bold text-primary">Harga</h4>
                 <p className="text-gray-400">
-                  💰 Harga Asli: Rp {order.originalPrice?.toLocaleString()}
+                  💰 Harga Asli: Rp {order.originalPrice?.toLocaleString() || "0"}
                 </p>
                 {order.discount > 0 && (
                   <p className="text-green-500">🎉 Diskon: {order.discount}%</p>
                 )}
                 <p className="text-white font-bold">
-                  💵 Total: Rp {order.finalPrice?.toLocaleString()}
+                  💵 Total: Rp {order.finalPrice?.toLocaleString() || "0"}
                 </p>
               </div>
 
@@ -272,17 +273,18 @@ export default function AdminDashboard() {
                   Status & Tindakan
                 </h4>
                 <div className="flex items-center space-x-4">
-                  <select
+                <select
                     className="flex-1 p-2 border rounded-lg bg-black text-white border-gray-500"
-                    value={order.status}
+                    value={order.status || "Pending"}
                     onChange={(e) =>
                       updateOrderStatus(order.id, e.target.value)
                     }
-                  >
-                    <option value="Diproses">Diproses</option>
-                    <option value="Selesai">Selesai</option>
-                    <option value="Pending">Pending</option>
-                  </select>
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Diproses">Diproses</option>
+                  <option value="Selesai">Selesai</option>
+                  <option value="Dibatalkan">Dibatalkan</option>
+                </select>
                   <button
                     onClick={() => handleDeleteOrder(order.id)}
                     className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"

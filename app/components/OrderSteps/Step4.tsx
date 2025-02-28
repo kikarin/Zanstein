@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
+import { useRouter } from "next/navigation";
 import { db } from "../../../lib/firebaseConfig";
 import { doc, getDoc, updateDoc, addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { calculateOrderPrice } from "../../../lib/utils/priceCalculator";
 import { OrderData } from "../../../lib/types/order";
 import { PRICE_LIST } from "../../../lib/utils/priceCalculator";
+import OrderSummary from "./OrderSummary";
 
 interface Step4Props {
   orderData: OrderData;
@@ -16,8 +17,9 @@ interface Step4Props {
 
 const Step4 = ({ orderData, updateOrderData, prevStep }: Step4Props) => {
   const { user } = useAuth();
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [showPopup, setShowPopup] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [hasUsedDiscount, setHasUsedDiscount] = useState(false);
 
   useEffect(() => {
@@ -25,20 +27,26 @@ const Step4 = ({ orderData, updateOrderData, prevStep }: Step4Props) => {
       if (!user) return;
       
       try {
-        const userOrdersRef = collection(db, "orders");
-        const userOrdersSnap = await getDoc(doc(db, "users", user.uid));
-        
-        if (userOrdersSnap.exists() && userOrdersSnap.data().hasUsedDiscount) {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists() && userDoc.data().hasUsedDiscount) {
           setHasUsedDiscount(true);
-          // Reset discount if user has already used it
           updateOrderData({ discount: 0 });
         }
       } catch (error) {
-        console.error("Error checking discount usage:", error);
+        console.error("Error checking discount:", error);
       }
     };
 
     checkDiscountUsage();
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      updateOrderData({ 
+        customerName: user.displayName || '',
+        isNameLocked: true
+      });
+    }
   }, [user]);
 
   const calculateTotal = () => {
@@ -73,8 +81,6 @@ const Step4 = ({ orderData, updateOrderData, prevStep }: Step4Props) => {
     return total;
   };
 
-  
-
   const totalPriceBeforeDiscount = calculateTotal();
   const finalPrice = orderData.discount 
     ? totalPriceBeforeDiscount * (1 - orderData.discount/100) 
@@ -82,134 +88,104 @@ const Step4 = ({ orderData, updateOrderData, prevStep }: Step4Props) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    if (!orderData.customerName || !orderData.whatsappNumber || !orderData.paymentMethod) {
+      alert("Mohon lengkapi semua data");
+      return;
+    }
 
+    setShowConfirmation(true);
+  };
+
+  const handleSaveOrder = async (sendToAdmin: boolean = false) => {
+    setLoading(true);
     try {
       if (orderData.discount && hasUsedDiscount) {
         alert("Anda sudah menggunakan diskon sebelumnya.");
-        setLoading(false);
         return;
       }
 
-      // Prepare complete order data
+      if (!orderData.projectType || !orderData.platform || !orderData.projectName) {
+        alert("Mohon lengkapi data proyek");
+        return;
+      }
+
+      const totalPriceBeforeDiscount = calculateTotal();
+      const finalPrice = orderData.discount 
+        ? totalPriceBeforeDiscount * (1 - orderData.discount/100) 
+        : totalPriceBeforeDiscount;
+
       const orderDataToSave = {
-        // Customer Info
-        customerName: orderData.customerName || 'Guest',
+        userId: user?.uid || 'guest',
+        customerName: orderData.customerName || '',
         whatsappNumber: orderData.whatsappNumber || '',
         paymentMethod: orderData.paymentMethod || '',
-        userId: user?.uid || 'guest',
-        
-        // Project Details
         projectType: orderData.projectType || '',
-        projectName: orderData.projectName || '',
         platform: orderData.platform || '',
+        projectName: orderData.projectName || '',
         applicationType: orderData.applicationType || '',
         referenceLink: orderData.referenceLink || '',
-
-        // Development Details
         developmentMethod: orderData.developmentMethod || 'fullstack',
-        
-        // Fullstack Choice
-        ...(orderData.developmentMethod === 'fullstack' && {
-          fullstackChoice: {
-            framework: orderData.fullstackChoice?.framework || '',
-            database: orderData.fullstackChoice?.database || ''
-          }
-        }),
-        
-        // Mix & Match Choice
-        ...(orderData.developmentMethod === 'mixmatch' && {
-          mixmatchChoice: {
-            frontend: orderData.mixmatchChoice?.frontend || '',
-            backend: orderData.mixmatchChoice?.backend || '',
-            api: orderData.mixmatchChoice?.api || '',
-            database: orderData.mixmatchChoice?.database || ''
-          }
-        }),
-
-        // UI/UX Details
+        fullstackChoice: orderData.fullstackChoice || {
+          framework: '',
+          database: ''
+        },
+        mixmatchChoice: orderData.mixmatchChoice || {
+          frontend: '',
+          backend: '',
+          api: '',
+          database: ''
+        },
         roles: orderData.roles || [],
         uiFramework: orderData.uiFramework || [],
-        themeChoice: orderData.themeChoice || { mode: 'light', style: '' },
+        themeChoice: orderData.themeChoice || { mode: 'default' },
         notificationType: orderData.notificationType || 'default',
-        customColors: orderData.customColors || { count: 0, colors: [] },
-
-        // Pricing
-        totalPrice: calculateTotal(),
+        customColors: orderData.customColors || { colors: [] },
+        deadline: orderData.deadline || 'standard',
+        notes: orderData.notes || '',
         originalPrice: totalPriceBeforeDiscount,
         finalPrice: finalPrice,
         discount: orderData.discount || 0,
-        
-        // Status & Metadata
         status: "Pending",
         createdAt: serverTimestamp(),
-        lastUpdated: serverTimestamp(),
-        
-        // Additional Info
-        notes: orderData.notes || '',
-        deadline: orderData.deadline || 'standard'
+        lastUpdated: serverTimestamp()
       };
 
-      await addDoc(collection(db, "orders"), orderDataToSave);
+      const docRef = await addDoc(collection(db, "orders"), orderDataToSave);
 
-      // Mark discount as used if user used it
       if (user && orderData.discount) {
         await updateDoc(doc(db, "users", user.uid), {
           hasUsedDiscount: true
         });
       }
 
-      setShowPopup(true);
+      if (sendToAdmin) {
+        const waMessage = generateWhatsAppMessage(orderDataToSave);
+        window.open(`https://wa.me/6285693531495?text=${encodeURIComponent(waMessage)}`, "_blank");
+      }
+
+      alert("Order berhasil disimpan!");
+      router.push("/");
     } catch (error) {
       console.error("Error saving order:", error);
       alert("Terjadi kesalahan saat menyimpan order");
     } finally {
       setLoading(false);
+      setShowConfirmation(false);
     }
   };
 
-  const generateWhatsAppMessage = () => {
-    const message = `
-📌 *ZanStein Solution - Order Baru*
- Nama: ${orderData.customerName || 'Guest'}
- WhatsApp: ${orderData.whatsappNumber}
- Jenis Proyek: ${getProjectTypeName(orderData.projectType)}
- Platform: ${orderData.platform || '-'}
- Aplikasi: ${orderData.projectName || '-'}
+  const generateWhatsAppMessage = (order: OrderData) => {
+    return `
+*🛒 ORDER BARU*
+Nama: ${order.customerName}
+Project: ${order.projectType}
+Platform: ${order.platform}
+Aplikasi: ${order.projectName}
 
-🔧 *Detail Teknologi:*
-${orderData.developmentMethod === 'fullstack' ? `
-*Fullstack Framework:* ${orderData.fullstackChoice?.framework || '-'}
-*Database:* ${orderData.fullstackChoice?.database || '-'}
-` : `
-*Frontend:* ${orderData.mixmatchChoice?.frontend || '-'}
-*Backend:* ${orderData.mixmatchChoice?.backend || '-'}
-*API:* ${orderData.mixmatchChoice?.api || '-'}
-*Database:* ${orderData.mixmatchChoice?.database || '-'}
-`}
-
- *Role:* ${orderData.roles?.join(', ') || '-'}
- *UI Framework:* ${orderData.uiFramework?.join(', ') || '-'}
- *Tema:* ${orderData.themeChoice?.mode || '-'} (${orderData.themeChoice?.style || '-'})
- *Notifikasi:* ${orderData.notificationType || '-'}
-
- *Total Harga:* Rp ${finalPrice.toLocaleString()}
-${orderData.discount ? `🎁 *Diskon:* ${orderData.discount}%` : ''}
- *Pembayaran via:* ${orderData.paymentMethod || 'Belum dipilih'}
-
-    `;
-
-    return message;
-  };
-
-  const getProjectTypeName = (type: string) => {
-    switch (type) {
-      case 'A': return 'Tugas Sekolah Harian';
-      case 'B': return 'Uji Kompetensi (Ujikom)';
-      case 'C': return 'Sidang PKL';
-      case 'D': return 'Pengembangan Web/Aplikasi Profesional';
-      default: return type;
-    }
+Deadline: ${order.deadline}
+Total: Rp ${order.totalPrice?.toLocaleString()}
+${order.notes ? `\nCatatan: ${order.notes}` : ''}
+    `.trim();
   };
 
   return (
@@ -297,27 +273,48 @@ ${orderData.discount ? `🎁 *Diskon:* ${orderData.discount}%` : ''}
         </div>
       </form>
 
-      {showPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg text-center w-96">
-            <h2 className="text-2xl font-bold text-primary">🎉 Order Berhasil!</h2>
-            <p className="mt-2 text-gray-600">Order Anda telah tersimpan.</p>
-            <p className="text-sm text-gray-500">Silakan kirim detail order ke WhatsApp admin.</p>
-            <button
-              onClick={() => {
-                window.open(`https://wa.me/6285693531495?text=${encodeURIComponent(generateWhatsAppMessage())}`, "_blank");
-                setShowPopup(false);
-              }}
-              className="mt-4 bg-green-500 text-white px-4 py-2 rounded-lg w-full"
-            >
-              Kirim ke WhatsApp
-            </button>
-            <button 
-              onClick={() => setShowPopup(false)} 
-              className="mt-2 text-gray-600 block w-full"
-            >
-              Tutup
-            </button>
+      {/* Popup Konfirmasi dengan Scroll */}
+      {showConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-start z-50 p-4 overflow-y-auto">
+          <div className="bg-black p-6 rounded-lg border border-primary w-full max-w-2xl my-8">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-primary">
+                Konfirmasi Order
+              </h2>
+              <button 
+                onClick={() => setShowConfirmation(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+              <OrderSummary orderData={orderData} isPreview={true} />
+            </div>
+
+            <div className="flex justify-between mt-6 gap-4 pt-4 border-t border-gray-700">
+              <button
+                onClick={() => setShowConfirmation(false)}
+                className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+              >
+                Batalkan
+              </button>
+              <button
+                onClick={() => handleSaveOrder(false)}
+                disabled={loading}
+                className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50"
+              >
+                {loading ? "Menyimpan..." : "Pesan"}
+              </button>
+              <button
+                onClick={() => handleSaveOrder(true)}
+                disabled={loading}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+              >
+                {loading ? "Menyimpan..." : "Pesan & Teruskan"}
+              </button>
+            </div>
           </div>
         </div>
       )}

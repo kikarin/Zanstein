@@ -161,7 +161,7 @@ const Step3B = ({
     const updatedRoles = orderData.roles?.filter((r) => r !== role) || [];
     updateOrderData({ roles: updatedRoles });
   };
-  
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-primary text-center">
@@ -350,7 +350,7 @@ const Step3B = ({
           {/* API Selection */}
           <div className="space-y-3">
             <h3 className="text-lg font-medium text-white">API</h3>
-            <select
+      <select
               className="w-full p-2 bg-black border border-gray-600 rounded-lg text-white"
               value={orderData.mixmatchChoice?.api || ""}
               onChange={(e) => handleMixMatchChange("api", e.target.value)}
@@ -361,24 +361,24 @@ const Step3B = ({
                   {tech} - Rp {price.toLocaleString()}
                 </option>
               ))}
-            </select>
+      </select>
           </div>
 
           {/* Database Selection */}
           <div className="space-y-3">
             <h3 className="text-lg font-medium text-white">Database</h3>
-            <select
+      <select
               className="w-full p-2 bg-black border border-gray-600 rounded-lg text-white"
               value={orderData.mixmatchChoice?.database || ""}
               onChange={(e) => handleMixMatchChange("database", e.target.value)}
-            >
-              <option value="">Pilih Database</option>
+      >
+        <option value="">Pilih Database</option>
               {Object.entries(PRICE_LIST.databases).map(([tech, price]) => (
                 <option key={tech} value={tech}>
                   {tech} - Rp {price.toLocaleString()}
                 </option>
               ))}
-            </select>
+      </select>
           </div>
         </div>
       )}
@@ -460,7 +460,7 @@ const Step3B = ({
       {/* 4. Theme Selection */}
       <div className="space-y-3">
         <h3 className="text-lg font-medium text-white">4️⃣ Tema UI</h3>
-        <select
+      <select
           className="w-full p-2 bg-black border border-gray-600 rounded-lg text-white"
           value={orderData.themeChoice?.mode || ""}
           onChange={(e) =>
@@ -476,9 +476,9 @@ const Step3B = ({
           <option value="light">Light Mode</option>
           <option value="dark">Dark Mode</option>
           <option value="auto">Auto (Switch Dark/Light) - +Rp 20.000</option>
-        </select>
+      </select>
 
-        <select
+      <select
           className="w-full p-2 bg-black border border-gray-600 rounded-lg text-white"
           value={orderData.themeChoice?.style || ""}
           onChange={(e) =>
@@ -497,7 +497,7 @@ const Step3B = ({
           <option value="modern">Modern</option>
           <option value="cyberpunk">Cyberpunk</option>
           <option value="minimalist">Minimalist</option>
-        </select>
+      </select>
       </div>
 
       {/* 5. Notification Type */}
